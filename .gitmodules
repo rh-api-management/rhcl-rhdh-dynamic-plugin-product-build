@@ -1,0 +1,3 @@
+[submodule "kuadrant-backstage-plugin"]
+	path = kuadrant-backstage-plugin
+	url = https://github.com/Kuadrant/kuadrant-backstage-plugin.git

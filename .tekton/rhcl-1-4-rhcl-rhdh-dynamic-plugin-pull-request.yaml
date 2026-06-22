@@ -29,7 +29,7 @@ spec:
   - name: dockerfile
     value: Containerfile.dynamic-plugin
   - name: prefetch-input
-    value: '[{"type": "rpm", "path": "."}, {"type": "npm", "path": "./yarn-install"}, {"type": "yarn", "path": "./kuadrant-backstage-plugin"}]'
+    value: '[{"type": "rpm", "path": "."}, {"type": "npm", "path": "./yarn-install"}, {"type": "yarn", "path": "./kuadrant-backstage-plugin", "workspaces": ["@kuadrant/kuadrant-backstage-plugin-frontend", "@kuadrant/kuadrant-backstage-plugin-backend"]}]'
   pipelineRef: 
     name: build-pipeline
   taskRunTemplate:

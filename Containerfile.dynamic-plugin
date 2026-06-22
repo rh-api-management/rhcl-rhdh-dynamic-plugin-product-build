@@ -39,9 +39,9 @@ COPY kuadrant-backstage-plugin/.yarn/patches/ ./.yarn/patches/
 # Downstream .yarnrc.yml — adds multi-arch support and removes yarnPath (we use yarn 4 globally)
 COPY .yarnrc.yml ./
 
-# Install dependencies
+# Install only the deps needed to build and export the kuadrant plugins
 RUN if [ -f /cachi2/cachi2.env ]; then source /cachi2/cachi2.env; fi && \
-    yarn install
+    yarn workspaces focus @kuadrant/kuadrant-backstage-plugin-frontend @kuadrant/kuadrant-backstage-plugin-backend
 
 # Copy full submodule source (overwrites manifests — that's fine, they're identical)
 COPY kuadrant-backstage-plugin/ ./

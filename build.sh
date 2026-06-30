@@ -13,7 +13,7 @@ cd "${PLUGIN_DIR}"
 # Install only deps needed by the two kuadrant plugins.
 # The submodule yarn.lock contains ~3878 packages (full RHDH dev environment).
 # workspaces focus limits installation to just what the plugins require.
-yarn workspaces focus \
+yarn workspaces focus --immutable \
     @kuadrant/kuadrant-backstage-plugin-frontend \
     @kuadrant/kuadrant-backstage-plugin-backend
 

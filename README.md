@@ -83,16 +83,17 @@ is `FROM scratch` with just `COPY dist/`.
 **`clone-repository`** — clones the repo including submodules, stores it as an
 OCI trusted artifact.
 
-**`prefetch-dependencies`** — runs cachi2 against the `prefetch-input` parameter.
-Downloads ~2931 yarn packages offline and stores them in `CACHI2_ARTIFACT`. Sets
-up an offline registry proxy consumed by `build.sh` via `/cachi2/cachi2.env`.
-`dev-package-managers: "true"` ensures devDependencies are included (needed for
-tsc, turbo, rhdh-cli).
+**`prefetch-dependencies`** — runs cachi2 against `./kuadrant-backstage-plugin/packaging`,
+a minimal yarn workspace covering only the two plugin packages (~300 packages vs
+~3878 in the full rhdh-local lockfile). Downloads packages offline and stores them
+in `CACHI2_ARTIFACT`. `dev-package-managers: "true"` ensures devDependencies are
+included (needed for tsc, rhdh-cli).
 
 **`build-dynamic-plugins`** — the JS build step. Runs `build.sh` inside
 `quay.io/konflux-ci/yarn4-nodejs22-ubi9-minimal:latest` (yarn 4 + node 22).
-The script sources `/cachi2/cachi2.env` so yarn works fully offline. The
-`dynamic-plugins/` directory at the end of the script becomes `SCRIPT_ARTIFACT`.
+The script runs `yarn install --immutable` in `kuadrant-backstage-plugin/packaging/`
+(skips the resolution step — no network calls), then builds and exports the plugins.
+The `dynamic-plugins/` directory at the end of the script becomes `SCRIPT_ARTIFACT`.
 Both this task and `prefetch-dependencies` are allocated 6 CPU / 16Gi RAM.
 
 **`build-container`** — buildah builds the `FROM scratch` Containerfile using
@@ -122,23 +123,24 @@ deliverable format Konflux expects.
 
 `kuadrant-backstage-plugin/` points to
 https://github.com/Kuadrant/kuadrant-backstage-plugin, which is a full
-rhdh-local fork (not a standalone plugin repo). Its `yarn.lock` covers the
+rhdh-local fork (not a standalone plugin repo). Its root `yarn.lock` covers the
 entire RHDH application (~3878 packages).
 
-The `prefetch-input` uses a `workspaces` filter to limit cachi2 to only the
-transitive dependencies of the two kuadrant plugins (~2931 packages). Without
-this filter, cachi2 would prefetch everything in the lockfile and OOM.
+The `packaging/` subdirectory inside the submodule is a standalone yarn workspace
+root covering only the two kuadrant plugins. Its `yarn.lock` contains ~300
+packages. cachi2 prefetches from there, avoiding the full RHDH dependency tree.
 
 ## build.sh
 
 Runs inside `build-dynamic-plugins`. Steps:
 
 1. Sources `/cachi2/cachi2.env` — sets up the offline package registry proxy
-2. `yarn workspaces focus` — installs only the two plugin workspaces (not all 3878 packages)
-3. `yarn turbo run build` — compiles the plugins
-4. `yarn workspace ... export-dynamic` — exports each plugin as an RHDH dynamic plugin (`dist-dynamic/`)
-5. Copies `dist-dynamic/` dirs into `dynamic-plugins/dist/`
-6. Copies LICENSE into `dynamic-plugins/`
+2. `cd kuadrant-backstage-plugin/packaging` — minimal plugin-only yarn workspace
+3. `yarn install --immutable` — installs from cachi2 cache, no resolution step (no network)
+4. Builds frontend plugin first (backend imports frontend's permission types)
+5. `yarn workspace ... export-dynamic` — exports each plugin as an RHDH dynamic plugin (`dist-dynamic/`)
+6. Copies `dist-dynamic/` dirs into `dynamic-plugins/dist/`
+7. Copies LICENSE into `dynamic-plugins/`
 
 ## OCI plugin format
 

@@ -68,30 +68,28 @@ the `prefetch-dependencies` task (cachi2) before the build task runs.
 ### prefetch-input
 
 ```json
-[
-  {"type": "yarn", "path": "./kuadrant-backstage-plugin",
-   "workspaces": ["@kuadrant/kuadrant-backstage-plugin-frontend",
-                  "@kuadrant/kuadrant-backstage-plugin-backend"]}
-]
+[{"type": "yarn", "path": "./kuadrant-backstage-plugin/packaging"}]
 ```
 
-The `workspaces` filter is essential — without it, cachi2 fetches all 3878
-packages and OOMs the container (confirmed: 5862 fetcher objects = 2931 × 2
-architectures caused OOM when multiarch was enabled).
+`packaging/` is a standalone yarn workspace root inside the submodule that covers
+only the two kuadrant plugins. Its `yarn.lock` contains ~300 packages instead of
+the full rhdh-local lockfile (~3878 packages). No `workspaces` filter needed.
 
 ### What cachi2 reads from the yarn path
 
-cachi2 reads `./kuadrant-backstage-plugin/.yarnrc.yml` for the yarn prefetch.
-The submodule's `.yarnrc.yml` **must** have:
+cachi2 reads `./kuadrant-backstage-plugin/packaging/.yarnrc.yaml` for the yarn
+prefetch. That file sets:
 - `supportedArchitectures: {cpu: [x64], os: [linux]}` — limits platform-specific
   package fetches to x64 Linux only
+- `nodeLinker: node-modules`
+- `enableGlobalCache: true` — harmless in hermetic mode (ansible uses it too)
 
-`enableGlobalCache: true` is fine — ansible-rhdh-plugins uses it and works. cachi2
-overrides the registry via environment variables; global cache is harmless in
-hermetic mode.
+### Why yarn workspaces focus doesn't work in hermetic builds
 
-The upstream submodule (https://github.com/Kuadrant/kuadrant-backstage-plugin)
-now has `supportedArchitectures` in its `.yarnrc.yml`, so no workaround is needed.
+`yarn workspaces focus` always runs a resolution step that contacts
+`registry.yarnpkg.com`, even with a lockfile present. This fails with network
+isolation. `yarn install --immutable` skips the resolution step (lockfile is
+treated as frozen) and is the correct approach for hermetic builds.
 
 ### The build task reads /cachi2/cachi2.env
 
@@ -192,11 +190,12 @@ Key params for our use:
 
 Runs inside `run-script-oci-ta`. Responsibilities:
 1. Source `/cachi2/cachi2.env` (sets up offline package registry proxy)
-2. `yarn workspaces focus` — install only plugin deps (not all 3878 packages)
-3. `yarn turbo run build` — build kuadrant + kuadrant-backend
-4. `yarn workspace ... export-dynamic` — export as RHDH dynamic plugin format
-5. Collect plugin dirs into `dynamic-plugins/dist/`
-6. Copy LICENSE into `dynamic-plugins/`
+2. `cd kuadrant-backstage-plugin/packaging` — use the minimal plugin-only workspace
+3. `yarn install --immutable` — install plugin deps from cachi2 cache (no resolution step)
+4. `yarn workspace ... build` — build frontend first (backend imports frontend's permission types)
+5. `yarn workspace ... export-dynamic` — export as RHDH dynamic plugin format
+6. Collect plugin dirs into `dynamic-plugins/dist/`
+7. Copy LICENSE into `dynamic-plugins/`
 
 ## dynamic-plugins/Containerfile
 

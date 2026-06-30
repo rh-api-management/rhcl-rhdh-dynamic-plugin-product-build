@@ -8,27 +8,25 @@ if [ -f /cachi2/cachi2.env ]; then
     source /cachi2/cachi2.env
 fi
 
-cd "${PLUGIN_DIR}"
+# Use the packaging/ sub-project — its yarn.lock covers only the two plugin
+# workspaces (~300 packages) rather than the full rhdh-local lockfile (~3878).
+# yarn install --immutable skips the resolution step (no network calls needed).
+cd "${PLUGIN_DIR}/packaging"
 
-# Install only deps needed by the two kuadrant plugins.
-# The submodule yarn.lock contains ~3878 packages (full RHDH dev environment).
-# workspaces focus limits installation to just what the plugins require.
-yarn workspaces focus --immutable \
-    @kuadrant/kuadrant-backstage-plugin-frontend \
-    @kuadrant/kuadrant-backstage-plugin-backend
+yarn install --immutable
 
-# Build plugins (turbo resolves transitive workspace dependencies automatically)
-yarn turbo run build \
-    --filter='./plugins/kuadrant' \
-    --filter='./plugins/kuadrant-backend'
+# Build frontend first — backend imports frontend's shared permission types.
+yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
+yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 
 # Export as RHDH dynamic plugin format (creates dist-dynamic/ in each plugin dir)
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend export-dynamic
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend export-dynamic
 
-cd ..
+cd ../..
 
-# Collect exported plugin directories into the OCI artifact output location
+# Collect exported plugin directories into the OCI artifact output location.
+# dist-dynamic/ is created at the real plugin paths (packaging/plugins/* are symlinks).
 mkdir -p dynamic-plugins/dist
 cp -r "${PLUGIN_DIR}/plugins/kuadrant/dist-dynamic" \
       dynamic-plugins/dist/kuadrant-backstage-plugin-frontend-dynamic

@@ -106,7 +106,7 @@ spec:
       name: privileged-nested
       type: string
     - name: enable-package-registry-proxy
-      default: 'true'
+      default: 'false'
       description: Use the package registry proxy when prefetching dependencies
       type: string
     - name: sast-target-dirs

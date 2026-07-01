@@ -201,7 +201,7 @@ spec:
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
       - name: SCRIPT_RUNNER_IMAGE
-        value: quay.io/konflux-ci/yarn4-nodejs22-ubi9-minimal:latest
+        value: quay.io/konflux-ci/yarn4-nodejs22-ubi9-minimal:3ce50e6 # yarn 4.12
       - name: SCRIPT_ARTIFACT_RELATIVE_PATH
         value: dynamic-plugins
       - name: SCRIPT

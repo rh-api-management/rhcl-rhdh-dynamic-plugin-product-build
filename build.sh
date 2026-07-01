@@ -5,7 +5,7 @@ PLUGIN_DIR="kuadrant-backstage-plugin"
 
 # Set up hermetic build environment (cachi2 offline package registry proxy)
 if [ -f /cachi2/cachi2.env ]; then
-    source /cachi2/cachi2.env
+	source /cachi2/cachi2.env
 fi
 
 # Use the packaging/ sub-project — its yarn.lock covers only the two plugin
@@ -16,9 +16,10 @@ cd "${PLUGIN_DIR}/packaging"
 yarn install --immutable
 
 # Generate TypeScript declaration files (.d.ts) required by export-dynamic.
-# export-dynamic needs dist-types/ to exist; esbuild (used by build) does not produce them.
-yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend tsc
-yarn workspace @kuadrant/kuadrant-backstage-plugin-backend tsc
+# Uses packaging/tsconfig.json (not a symlink) with preserveSymlinks:true so
+# @backstage/cli extends correctly and module resolution finds packaging/node_modules/.
+# outDir:"../dist-types" places .d.ts files where rhdh-cli plugin export expects them.
+yarn tsc
 
 # Build frontend first — backend imports frontend's shared permission types.
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
@@ -34,9 +35,9 @@ cd ../..
 # dist-dynamic/ is created at the real plugin paths (packaging/plugins/* are symlinks).
 mkdir -p dynamic-plugins/dist
 cp -r "${PLUGIN_DIR}/plugins/kuadrant/dist-dynamic" \
-      dynamic-plugins/dist/kuadrant-backstage-plugin-frontend-dynamic
+	dynamic-plugins/dist/kuadrant-backstage-plugin-frontend-dynamic
 cp -r "${PLUGIN_DIR}/plugins/kuadrant-backend/dist-dynamic" \
-      dynamic-plugins/dist/kuadrant-backstage-plugin-backend-dynamic
+	dynamic-plugins/dist/kuadrant-backstage-plugin-backend-dynamic
 
 # Copy LICENSE into the artifact directory (Containerfile COPY can't reach ../
 # since its build context is dynamic-plugins/)

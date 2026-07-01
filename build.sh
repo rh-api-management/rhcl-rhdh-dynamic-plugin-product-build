@@ -15,6 +15,11 @@ cd "${PLUGIN_DIR}/packaging"
 
 yarn install --immutable
 
+# Generate TypeScript declaration files (.d.ts) required by export-dynamic.
+# export-dynamic needs dist-types/ to exist; esbuild (used by build) does not produce them.
+yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend tsc
+yarn workspace @kuadrant/kuadrant-backstage-plugin-backend tsc
+
 # Build frontend first — backend imports frontend's shared permission types.
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build

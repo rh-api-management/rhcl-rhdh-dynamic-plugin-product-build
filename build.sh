@@ -15,6 +15,13 @@ cd "${PLUGIN_DIR}/packaging"
 
 yarn install --immutable
 
+# cachi2 patches packaging/.yarnrc.yml with globalFolder/npmRegistryServer before
+# this task runs. rhdh-cli's 'yarn install --no-immutable' inside dist-dynamic/
+# walks up: plugins/kuadrant-backend/dist-dynamic/ → plugins/kuadrant-backend/ →
+# plugins/ → kuadrant-backstage-plugin/ (unpatched). Copy the patched file one
+# level above the plugins so yarn finds the cachi2 config before the unpatched one.
+cp .yarnrc.yml ../plugins/.yarnrc.yml
+
 # Linux getcwd() resolves symlinks to real paths, so tools (backstage-cli,
 # rhdh-cli) running with cwd=plugins/kuadrant (real path) walk up ancestors
 # that never reach packaging/node_modules. Symlinking it one level up makes
@@ -33,7 +40,14 @@ yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 
 # Export as RHDH dynamic plugin format (creates dist-dynamic/ in each plugin dir)
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend export-dynamic
-yarn workspace @kuadrant/kuadrant-backstage-plugin-backend export-dynamic
+yarn workspace @kuadrant/kuadrant-backstage-plugin-backend export-dynamic || {
+  # Print rhdh-cli's hidden yarn-install.log to surface the actual yarn error
+  find /var/workdir/source -name "yarn-install.log" 2>/dev/null | while IFS= read -r log; do
+    printf '=== %s ===\n' "$log"
+    cat "$log"
+  done
+  exit 1
+}
 
 cd ../..
 

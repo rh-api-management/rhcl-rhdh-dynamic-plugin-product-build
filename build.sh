@@ -15,6 +15,12 @@ cd "${PLUGIN_DIR}/packaging"
 
 yarn install --immutable
 
+# Linux getcwd() resolves symlinks to real paths, so tools (backstage-cli,
+# rhdh-cli) running with cwd=plugins/kuadrant (real path) walk up ancestors
+# that never reach packaging/node_modules. Symlinking it one level up makes
+# the hoisted packages findable from both real plugin paths.
+ln -sf "packaging/node_modules" "../node_modules"
+
 # Generate TypeScript declaration files (.d.ts) required by export-dynamic.
 # Uses packaging/tsconfig.json (not a symlink) with preserveSymlinks:true so
 # @backstage/cli extends correctly and module resolution finds packaging/node_modules/.

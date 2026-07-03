@@ -38,13 +38,33 @@ yarn tsc
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 
-# rhdh-cli's export-dynamic always runs 'yarn install --no-immutable' inside
-# dist-dynamic/. Without a lockfile that dir does full resolution → registry hit
-# → ENOTFOUND in hermetic mode. Pre-seeding the lockfile from packaging/yarn.lock
-# lets yarn resolve from existing entries without touching the registry.
-# rhdh-cli only deletes dist-dynamic/ when --clean is passed; default export keeps it.
+# rhdh-cli detects an existing dist-dynamic/yarn.lock and switches yarn to
+# --immutable (no network, lockfile must be exact). We pre-seed a MINIMAL
+# lockfile by running yarn install --no-immutable in a temp dir:
+#   - resolution uses packaging/yarn.lock (all packages already resolved, no registry)
+#   - fetch uses cachi2 global cache (no network)
+#   - yarn prunes the 2732-entry lockfile down to only what the 6 private deps need
+# The pruned lockfile is then copied to dist-dynamic/ for rhdh-cli's --immutable install.
+_dist_prep=$(mktemp -d)
+node --input-type=module << NODEJS_EOF
+import { readFileSync, writeFileSync } from 'fs';
+const pkg = JSON.parse(readFileSync('../plugins/kuadrant-backend/package.json'));
+const bundled = new Set(pkg.bundledDependencies || []);
+const peers = new Set(Object.keys(pkg.peerDependencies || {}));
+const deps = Object.fromEntries(
+  Object.entries(pkg.dependencies || {}).filter(
+    ([n]) => bundled.has(n) || (!n.startsWith('@backstage/') && !peers.has(n))
+  )
+);
+writeFileSync('${_dist_prep}/package.json',
+  JSON.stringify({name:'dist-dynamic-prep',private:true,dependencies:deps},null,2));
+NODEJS_EOF
+cp yarn.lock "${_dist_prep}/yarn.lock"
+cp .yarnrc.yml "${_dist_prep}/.yarnrc.yml"
+(cd "${_dist_prep}" && yarn install --no-immutable)
 mkdir -p ../plugins/kuadrant-backend/dist-dynamic
-cp yarn.lock ../plugins/kuadrant-backend/dist-dynamic/yarn.lock
+cp "${_dist_prep}/yarn.lock" ../plugins/kuadrant-backend/dist-dynamic/yarn.lock
+rm -rf "${_dist_prep}"
 
 # Export as RHDH dynamic plugin format (creates dist-dynamic/ in each plugin dir)
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend export-dynamic

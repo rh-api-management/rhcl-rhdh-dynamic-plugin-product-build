@@ -38,6 +38,14 @@ yarn tsc
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 
+# rhdh-cli's export-dynamic always runs 'yarn install --no-immutable' inside
+# dist-dynamic/. Without a lockfile that dir does full resolution → registry hit
+# → ENOTFOUND in hermetic mode. Pre-seeding the lockfile from packaging/yarn.lock
+# lets yarn resolve from existing entries without touching the registry.
+# rhdh-cli only deletes dist-dynamic/ when --clean is passed; default export keeps it.
+mkdir -p ../plugins/kuadrant-backend/dist-dynamic
+cp yarn.lock ../plugins/kuadrant-backend/dist-dynamic/yarn.lock
+
 # Export as RHDH dynamic plugin format (creates dist-dynamic/ in each plugin dir)
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend export-dynamic
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend export-dynamic || {

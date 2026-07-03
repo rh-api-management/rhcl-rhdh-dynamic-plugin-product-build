@@ -49,17 +49,19 @@ _dist_prep=$(mktemp -d)
 node --input-type=module << NODEJS_EOF
 import { readFileSync, writeFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync('../plugins/kuadrant-backend/package.json'));
-// Mirror rhdh-cli customizeForDynamicUse: move @backstage/* from deps to peerDeps.
-// The temp package.json must have the EXACT same name, deps, and peerDeps as what
-// rhdh-cli writes to dist-dynamic/package.json, so the workspace lockfile entry
+// Mirror rhdh-cli customizeForDynamicUse: move @backstage/* from deps to peerDeps,
+// AND move any packages listed in --shared-package in the export-dynamic script.
+// The temp package.json must have the EXACT same name/deps/peerDeps as what
+// rhdh-cli writes to dist-dynamic/package.json so the workspace lockfile entry
 // matches and yarn install --immutable does not see a modification.
+const exportScript = pkg.scripts?.['export-dynamic'] || '';
+const userShared = [...exportScript.matchAll(/--shared-package\s+([^\s!][^\s]*)/g)]
+  .map(m => m[1]);
+const isShared = n => n.startsWith('@backstage/') || userShared.includes(n);
+
 const allDeps = pkg.dependencies || {};
-const movedToPeer = Object.fromEntries(
-  Object.entries(allDeps).filter(([n]) => n.startsWith('@backstage/'))
-);
-const remainingDeps = Object.fromEntries(
-  Object.entries(allDeps).filter(([n]) => !n.startsWith('@backstage/'))
-);
+const movedToPeer = Object.fromEntries(Object.entries(allDeps).filter(([n]) => isShared(n)));
+const remainingDeps = Object.fromEntries(Object.entries(allDeps).filter(([n]) => !isShared(n)));
 const allPeers = { ...(pkg.peerDependencies || {}), ...movedToPeer };
 writeFileSync('${_dist_prep}/package.json',
   JSON.stringify({

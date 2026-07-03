@@ -3,7 +3,7 @@ set -euo pipefail
 
 PLUGIN_DIR="kuadrant-backstage-plugin"
 
-# Set up hermetic build environment (cachi2 offline package registry proxy)
+# Set up hermetic build environment (cachi2 sets YARN_GLOBAL_FOLDER to the prefetched cache)
 if [ -f /cachi2/cachi2.env ]; then
 	source /cachi2/cachi2.env
 fi

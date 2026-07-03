@@ -3,7 +3,7 @@ FROM scratch
 COPY dist/ /dynamic-plugins/dist/
 COPY LICENSE /licenses/LICENSE
 
-LABEL version="0.0.2-dev" \
+LABEL version="0.3.0" \
       com.redhat.component="rhcl-rhdh-dynamic-plugin-container" \
       name="rhcl-1/rhcl-rhdh-dynamic-plugin-rhel9" \
       cpe="cpe:/a:redhat:connectivity_link:1::el9" \
@@ -11,7 +11,7 @@ LABEL version="0.0.2-dev" \
       description="Backstage dynamic plugins for Red Hat Connectivity Link" \
       io.k8s.display-name="Red Hat Connectivity Link RHDH Dynamic Plugins" \
       io.openshift.tags="api" \
-      io.k8s.description="" \
+      io.k8s.description="Red Hat Connectivity Link developer portal" \
       maintainer="eastizle@redhat.com"
 
 USER 1001

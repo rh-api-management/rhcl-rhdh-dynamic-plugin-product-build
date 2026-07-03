@@ -49,15 +49,25 @@ _dist_prep=$(mktemp -d)
 node --input-type=module << NODEJS_EOF
 import { readFileSync, writeFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync('../plugins/kuadrant-backend/package.json'));
-const bundled = new Set(pkg.bundledDependencies || []);
-const peers = new Set(Object.keys(pkg.peerDependencies || {}));
-const deps = Object.fromEntries(
-  Object.entries(pkg.dependencies || {}).filter(
-    ([n]) => bundled.has(n) || (!n.startsWith('@backstage/') && !peers.has(n))
-  )
+// Mirror rhdh-cli customizeForDynamicUse: move @backstage/* from deps to peerDeps.
+// The temp package.json must have the EXACT same name, deps, and peerDeps as what
+// rhdh-cli writes to dist-dynamic/package.json, so the workspace lockfile entry
+// matches and yarn install --immutable does not see a modification.
+const allDeps = pkg.dependencies || {};
+const movedToPeer = Object.fromEntries(
+  Object.entries(allDeps).filter(([n]) => n.startsWith('@backstage/'))
 );
+const remainingDeps = Object.fromEntries(
+  Object.entries(allDeps).filter(([n]) => !n.startsWith('@backstage/'))
+);
+const allPeers = { ...(pkg.peerDependencies || {}), ...movedToPeer };
 writeFileSync('${_dist_prep}/package.json',
-  JSON.stringify({name:'dist-dynamic-prep',private:true,dependencies:deps},null,2));
+  JSON.stringify({
+    name: pkg.name + '-dynamic',
+    private: true,
+    dependencies: remainingDeps,
+    peerDependencies: allPeers,
+  }, null, 2));
 NODEJS_EOF
 cp yarn.lock "${_dist_prep}/yarn.lock"
 cp .yarnrc.yml "${_dist_prep}/.yarnrc.yml"

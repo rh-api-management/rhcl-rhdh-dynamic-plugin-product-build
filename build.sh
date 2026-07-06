@@ -11,7 +11,7 @@ fi
 # Use the packaging/ sub-project — its yarn.lock covers only the two plugin
 # workspaces (~300 packages) rather than the full rhdh-local lockfile (~3878).
 # yarn install --immutable skips the resolution step (no network calls needed).
-cd "${PLUGIN_DIR}/packaging"
+cd packaging
 
 yarn install --immutable
 
@@ -21,13 +21,13 @@ yarn install --immutable
 # plugins/ → kuadrant-backstage-plugin/ (unpatched root .yarnrc.yml).
 # Copy the patched file one level above plugins/ so yarn finds the cachi2
 # globalFolder config before hitting the unpatched submodule root.
-cp .yarnrc.yml ../plugins/.yarnrc.yml
+cp .yarnrc.yml "../${PLUGIN_DIR}/plugins/.yarnrc.yml"
 
 # Linux getcwd() resolves symlinks to real paths, so tools (backstage-cli,
 # rhdh-cli) running with cwd=plugins/kuadrant (real path) walk up ancestors
 # that never reach packaging/node_modules. Symlinking it one level up makes
 # the hoisted packages findable from both real plugin paths.
-ln -sf "packaging/node_modules" "../node_modules"
+ln -sf "../packaging/node_modules" "../${PLUGIN_DIR}/node_modules"
 
 # Generate TypeScript declaration files (.d.ts) required by export-dynamic.
 # Uses packaging/tsconfig.json (not a symlink) with preserveSymlinks:true so
@@ -90,7 +90,7 @@ yarn workspace @kuadrant/kuadrant-backstage-plugin-backend export-dynamic || {
   exit 1
 }
 
-cd ../..
+cd ..
 
 # Collect exported plugin directories into the OCI artifact output location.
 # dist-dynamic/ is created at the real plugin paths (packaging/plugins/* are symlinks).

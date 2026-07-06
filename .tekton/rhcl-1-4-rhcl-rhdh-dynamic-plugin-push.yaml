@@ -73,7 +73,7 @@ spec:
       description: Execute the build with network isolation
       name: hermetic
       type: string
-    - default: '[{"type": "yarn", "path": "./kuadrant-backstage-plugin/packaging"}]'
+    - default: '[{"type": "yarn", "path": "./packaging"}]'
       description: Build dependencies to be prefetched by cachi2
       name: prefetch-input
       type: string

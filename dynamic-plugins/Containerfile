@@ -1,6 +1,6 @@
 FROM scratch
 
-COPY dist/ /dynamic-plugins/dist/
+COPY dist/ /
 COPY LICENSE /licenses/LICENSE
 
 LABEL version="0.3.0" \

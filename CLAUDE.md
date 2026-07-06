@@ -20,7 +20,7 @@ repo/
   .tekton/
     rhcl-1-4-rhcl-rhdh-dynamic-plugin-push.yaml
     rhcl-1-4-rhcl-rhdh-dynamic-plugin-pull-request.yaml
-  .yarnrc.yml                     # overrides submodule .yarnrc.yml (supportedArchitectures)
+  packaging/                      # standalone yarn workspace for cachi2 prefetch
   kuadrant-backstage-plugin/      # git submodule → Kuadrant/kuadrant-backstage-plugin
 ```
 
@@ -54,11 +54,9 @@ https://github.com/Kuadrant/kuadrant-backstage-plugin.git.
 a standalone plugin repo. Its `yarn.lock` contains ~3878 packages — dependencies
 for both the Kuadrant plugins AND the full RHDH application.
 
-Consequences:
-- Without workspace filtering, cachi2 would try to prefetch all ~3878 packages.
-- With workspace filtering (`"workspaces": ["@kuadrant/kuadrant-backstage-plugin-frontend",
-  "@kuadrant/kuadrant-backstage-plugin-backend"]`), cachi2 prefetches only what
-  those two packages need (~2931 packages).
+The solution is `packaging/` at the repo root — a standalone yarn workspace with
+its own `yarn.lock` (~2800 packages) that covers only the two plugin packages.
+cachi2 prefetches from there, never touching the submodule's full lockfile.
 
 ## cachi2 / Konflux prefetch
 
@@ -68,17 +66,16 @@ the `prefetch-dependencies` task (cachi2) before the build task runs.
 ### prefetch-input
 
 ```json
-[{"type": "yarn", "path": "./kuadrant-backstage-plugin/packaging"}]
+[{"type": "yarn", "path": "./packaging"}]
 ```
 
-`packaging/` is a standalone yarn workspace root inside the submodule that covers
-only the two kuadrant plugins. Its `yarn.lock` contains ~300 packages instead of
-the full rhdh-local lockfile (~3878 packages). No `workspaces` filter needed.
+`packaging/` is a standalone yarn workspace root at the repo root covering only
+the two kuadrant plugins. Its `yarn.lock` contains ~2800 packages instead of the
+full rhdh-local lockfile (~3878 packages).
 
 ### What cachi2 reads from the yarn path
 
-cachi2 reads `./kuadrant-backstage-plugin/packaging/.yarnrc.yaml` for the yarn
-prefetch. That file sets:
+cachi2 reads `./packaging/.yarnrc.yml` for the yarn prefetch. That file sets:
 - `supportedArchitectures: {cpu: [x64], os: [linux]}` — limits platform-specific
   package fetches to x64 Linux only
 - `nodeLinker: node-modules`
@@ -181,8 +178,8 @@ Konflux catalog task that:
 3. Stores the directory at `SCRIPT_ARTIFACT_RELATIVE_PATH` as a new OCI trusted artifact
 
 Key params for our use:
-- `SCRIPT_RUNNER_IMAGE`: `quay.io/konflux-ci/yarn4-nodejs22-ubi9-minimal:latest`
-  (has yarn 4 + node 22; no need to install yarn separately)
+- `SCRIPT_RUNNER_IMAGE`: `quay.io/konflux-ci/yarn4-nodejs22-ubi9-minimal:3ce50e6`
+  (pinned digest tag; has yarn 4 + node 22; no need to install yarn separately)
 - `SCRIPT_ARTIFACT_RELATIVE_PATH`: `dynamic-plugins` (the directory build.sh populates)
 - `HERMETIC`: passed through from pipeline param
 
@@ -190,7 +187,7 @@ Key params for our use:
 
 Runs inside `run-script-oci-ta`. Responsibilities:
 1. Source `/cachi2/cachi2.env` (sets up offline package registry proxy)
-2. `cd kuadrant-backstage-plugin/packaging` — use the minimal plugin-only workspace
+2. `cd packaging` — use the minimal plugin-only workspace at the repo root
 3. `yarn install --immutable` — install plugin deps from cachi2 cache (no resolution step)
 4. `yarn workspace ... build` — build frontend first (backend imports frontend's permission types)
 5. `yarn workspace ... export-dynamic` — export as RHDH dynamic plugin format
@@ -201,7 +198,7 @@ Runs inside `run-script-oci-ta`. Responsibilities:
 
 ```dockerfile
 FROM scratch
-COPY dist/ /dynamic-plugins/dist/
+COPY dist/ /
 COPY LICENSE /licenses/LICENSE
 LABEL ...
 USER 1001
@@ -212,10 +209,10 @@ The Containerfile itself lives in `dynamic-plugins/Containerfile` (committed).
 
 ## OCI plugin format
 
-The final OCI image is `FROM scratch` with plugin files at `/dynamic-plugins/dist/`.
+The final OCI image is `FROM scratch` with plugin files at the image root.
 RHDH's init container extracts these files when deploying. Plugin directories:
-- `/dynamic-plugins/dist/kuadrant-backstage-plugin-frontend-dynamic/`
-- `/dynamic-plugins/dist/kuadrant-backstage-plugin-backend-dynamic/`
+- `/kuadrant-backstage-plugin-frontend-dynamic/`
+- `/kuadrant-backstage-plugin-backend-dynamic/`
 
 ## What NOT to do
 

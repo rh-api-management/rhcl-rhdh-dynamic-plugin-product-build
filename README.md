@@ -20,7 +20,7 @@ repo/
   .tekton/
     rhcl-1-4-rhcl-rhdh-dynamic-plugin-push.yaml
     rhcl-1-4-rhcl-rhdh-dynamic-plugin-pull-request.yaml
-  .yarnrc.yml                     # sets supportedArchitectures for cachi2
+  packaging/                      # standalone yarn workspace for cachi2 prefetch
   kuadrant-backstage-plugin/      # git submodule → Kuadrant/kuadrant-backstage-plugin
 ```
 
@@ -83,16 +83,16 @@ is `FROM scratch` with just `COPY dist/`.
 **`clone-repository`** — clones the repo including submodules, stores it as an
 OCI trusted artifact.
 
-**`prefetch-dependencies`** — runs cachi2 against `./kuadrant-backstage-plugin/packaging`,
-a minimal yarn workspace covering only the two plugin packages (~300 packages vs
-~3878 in the full rhdh-local lockfile). Downloads packages offline and stores them
+**`prefetch-dependencies`** — runs cachi2 against `./packaging`, a standalone
+yarn workspace at the repo root covering only the two plugin packages (~2800 packages
+vs ~3878 in the full rhdh-local lockfile). Downloads packages offline and stores them
 in `CACHI2_ARTIFACT`. `dev-package-managers: "true"` ensures devDependencies are
 included (needed for tsc, rhdh-cli).
 
 **`build-dynamic-plugins`** — the JS build step. Runs `build.sh` inside
 `quay.io/konflux-ci/yarn4-nodejs22-ubi9-minimal:latest` (yarn 4 + node 22).
-The script runs `yarn install --immutable` in `kuadrant-backstage-plugin/packaging/`
-(skips the resolution step — no network calls), then builds and exports the plugins.
+The script runs `yarn install --immutable` in `packaging/` (skips the resolution
+step — no network calls), then builds and exports the plugins.
 The `dynamic-plugins/` directory at the end of the script becomes `SCRIPT_ARTIFACT`.
 Both this task and `prefetch-dependencies` are allocated 6 CPU / 16Gi RAM.
 
@@ -126,16 +126,17 @@ https://github.com/Kuadrant/kuadrant-backstage-plugin, which is a full
 rhdh-local fork (not a standalone plugin repo). Its root `yarn.lock` covers the
 entire RHDH application (~3878 packages).
 
-The `packaging/` subdirectory inside the submodule is a standalone yarn workspace
-root covering only the two kuadrant plugins. Its `yarn.lock` contains ~300
-packages. cachi2 prefetches from there, avoiding the full RHDH dependency tree.
+The `packaging/` directory at the repo root (not inside the submodule) is a
+standalone yarn workspace root covering only the two kuadrant plugins. Its
+`yarn.lock` contains ~2800 packages. cachi2 prefetches from there, avoiding the
+full RHDH dependency tree.
 
 ## build.sh
 
 Runs inside `build-dynamic-plugins`. Steps:
 
 1. Sources `/cachi2/cachi2.env` — sets up the offline package registry proxy
-2. `cd kuadrant-backstage-plugin/packaging` — minimal plugin-only yarn workspace
+2. `cd packaging` — minimal plugin-only yarn workspace at the repo root
 3. `yarn install --immutable` — installs from cachi2 cache, no resolution step (no network)
 4. Builds frontend plugin first (backend imports frontend's permission types)
 5. `yarn workspace ... export-dynamic` — exports each plugin as an RHDH dynamic plugin (`dist-dynamic/`)
@@ -144,11 +145,11 @@ Runs inside `build-dynamic-plugins`. Steps:
 
 ## OCI plugin format
 
-The final image is `FROM scratch` with plugin files at `/dynamic-plugins/dist/`.
+The final image is `FROM scratch` with plugin files at the image root.
 RHDH's init container extracts these at deploy time:
 
 ```
-/dynamic-plugins/dist/
+/
   kuadrant-backstage-plugin-frontend-dynamic/
   kuadrant-backstage-plugin-backend-dynamic/
 ```

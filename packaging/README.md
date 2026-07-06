@@ -9,7 +9,7 @@ standalone yarn workspace covering only the two plugin packages from the
 The submodule's root `yarn.lock` covers the entire RHDH application (~3878
 packages) because it is an rhdh-local fork used for local development. The
 Konflux hermetic build (cachi2 prefetch) only needs the plugin dependencies,
-roughly 1000 packages.
+roughly 2800 packages.
 
 This directory provides a minimal yarn workspace root that cachi2 can read
 without pulling in the full RHDH dependency tree.

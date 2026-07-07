@@ -52,7 +52,7 @@ yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 _dist_prep=$(mktemp -d)
 node --input-type=module << NODEJS_EOF
 import { readFileSync, writeFileSync } from 'fs';
-const pkg = JSON.parse(readFileSync('../plugins/kuadrant-backend/package.json'));
+const pkg = JSON.parse(readFileSync('./plugins/kuadrant-backend/package.json'));
 // Mirror rhdh-cli customizeForDynamicUse: move @backstage/* from deps to peerDeps,
 // AND move any packages listed in --shared-package in the export-dynamic script.
 // The temp package.json must have the EXACT same name/deps/peerDeps as what
@@ -78,8 +78,8 @@ NODEJS_EOF
 cp yarn.lock "${_dist_prep}/yarn.lock"
 cp .yarnrc.yml "${_dist_prep}/.yarnrc.yml"
 (cd "${_dist_prep}" && yarn install --no-immutable)
-mkdir -p ../plugins/kuadrant-backend/dist-dynamic
-cp "${_dist_prep}/yarn.lock" ../plugins/kuadrant-backend/dist-dynamic/yarn.lock
+mkdir -p ./plugins/kuadrant-backend/dist-dynamic
+cp "${_dist_prep}/yarn.lock" ./plugins/kuadrant-backend/dist-dynamic/yarn.lock
 rm -rf "${_dist_prep}"
 
 # Export as RHDH dynamic plugin format (creates dist-dynamic/ in each plugin dir)

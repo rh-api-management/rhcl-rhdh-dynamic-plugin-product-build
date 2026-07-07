@@ -7,7 +7,7 @@
   ],
   "exclude": ["node_modules"],
   "compilerOptions": {
-    "outDir": "../dist-types",
+    "outDir": "../kuadrant-backstage-plugin/dist-types",
     "rootDir": ".",
     "skipLibCheck": true,
     "noCheck": true,

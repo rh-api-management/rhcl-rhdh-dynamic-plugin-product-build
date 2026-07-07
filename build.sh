@@ -32,7 +32,10 @@ ln -sf "../packaging/node_modules" "../${PLUGIN_DIR}/node_modules"
 # Generate TypeScript declaration files (.d.ts) required by export-dynamic.
 # Uses packaging/tsconfig.json (not a symlink) with preserveSymlinks:true so
 # @backstage/cli extends correctly and module resolution finds packaging/node_modules/.
-# outDir:"../dist-types" places .d.ts files where rhdh-cli plugin export expects them.
+# outDir:"../kuadrant-backstage-plugin/dist-types" places .d.ts files where rhdh-cli
+# plugin export expects them (rhdh-cli looks for ../../dist-types from the real plugin
+# path kuadrant-backstage-plugin/plugins/<name>/, hence ../kuadrant-backstage-plugin/dist-types
+# from packaging/).
 yarn tsc
 
 # Build frontend first — backend imports frontend's shared permission types.

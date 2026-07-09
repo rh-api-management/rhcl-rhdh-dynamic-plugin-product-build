@@ -1,0 +1,7 @@
+dynamic-plugins/dist/
+dynamic-plugins/LICENSE
+
+packaging/.yarn/
+
+# Dependencies
+node_modules/

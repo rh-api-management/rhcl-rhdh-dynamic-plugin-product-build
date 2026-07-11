@@ -1,7 +1,7 @@
 {
   "name": "kuadrant-plugin-packaging",
   "private": true,
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.17.1",
   "workspaces": [
     "plugins/kuadrant",
     "plugins/kuadrant-backend"

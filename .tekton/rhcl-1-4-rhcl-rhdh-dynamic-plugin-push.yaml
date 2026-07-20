@@ -23,7 +23,7 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/api-management-tenant/rhcl-1-4-rhcl-rhdh-dynamic-plugin:{{revision}}
   - name: dockerfile
-    value: Containerfile
+    value: dynamic-plugins/Containerfile
   - name: hermetic
     value: "true"
   - name: build-source-image

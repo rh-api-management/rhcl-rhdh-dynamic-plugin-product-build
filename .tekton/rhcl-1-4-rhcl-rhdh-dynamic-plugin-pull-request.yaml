@@ -26,7 +26,7 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: Containerfile
+    value: dynamic-plugins/Containerfile
   - name: hermetic
     value: "true"
   - name: skip-checks

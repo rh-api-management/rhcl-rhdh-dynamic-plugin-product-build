@@ -37,6 +37,13 @@ yarn install --immutable
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 
+# Generate the central dist-types/ declaration tree that rhdh-cli's export
+# expects (it looks for ../../dist-types/plugins/<name>/src/index.d.ts from each
+# plugin dir). A standalone tsconfig emits only declarations (noCheck); run the
+# tsc binary directly since the submodule's "tsc" script is a turbo wrapper.
+cp ../build-workspace/dist-types.tsconfig.json ./dist-types.tsconfig.json
+node_modules/.bin/tsc -p dist-types.tsconfig.json
+
 # Pre-seed the backend's dist-dynamic/yarn.lock so rhdh-cli's internal
 # `yarn install --immutable` runs offline (no network, lockfile must be exact).
 # The frontend is bundled via scalprum/webpack and installs no dynamic deps, so

@@ -7,6 +7,10 @@
     "plugins/kuadrant-backend"
   ],
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "typescript": "^5.9.3"
+  },
+  "resolutions": {
+    "@yarnpkg/core": "4.9.1"
   }
 }

@@ -8,6 +8,15 @@ if [ -f /cachi2/cachi2.env ]; then
 	source /cachi2/cachi2.env
 fi
 
+# @swc/core 1.16+ ships "native addon carriers": on first load it materializes
+# the real binary into a cache dir ($HOME/.cache by default) and refuses if that
+# cache root's parent is writable by another user without the sticky bit. In the
+# run-script-oci-ta runner $HOME is /opt/app-root/src (group-writable, no sticky),
+# so rhdh-cli's swc-loader fails with "Failed to load native binding" when it
+# builds the scalprum assets. Point the cache at a private temp dir (parent /tmp
+# is sticky) so materialization is allowed.
+export SWC_NATIVE_BINDING_CACHE="$(mktemp -d)"
+
 # Use the packaging/ sub-project — its yarn.lock covers only the two plugin
 # workspaces (~300 packages) rather than the full rhdh-local lockfile (~3878).
 # yarn install --immutable skips the resolution step (no network calls needed).

@@ -12,6 +12,10 @@ LABEL version="0.5.0" \
       io.k8s.display-name="Red Hat Connectivity Link RHDH Dynamic Plugins" \
       io.openshift.tags="api" \
       io.k8s.description="Red Hat Connectivity Link developer portal" \
+      distribution-scope="public" \
+      release="1" \
+      url="https://github.com/rh-api-management/rhcl-rhdh-dynamic-plugin-product-build" \
+      vendor="Red Hat, Inc." \
       maintainer="eastizle@redhat.com"
 
 USER 1001

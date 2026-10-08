@@ -30,7 +30,7 @@ spec:
     description: Execute the build with network isolation
     name: hermetic
     type: string
-  - default: '[{"type": "yarn", "path": "./packaging"}]'
+  - default: '[{"type": "yarn", "path": "./build-workspace"}]'
     description: Build dependencies to be prefetched by cachi2
     name: prefetch-input
     type: string

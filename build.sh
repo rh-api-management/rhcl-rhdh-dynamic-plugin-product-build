@@ -45,9 +45,12 @@ ln -sf "../build-workspace/node_modules" "../${PLUGIN_DIR}/node_modules"
 # extends correctly and module resolution finds build-workspace/node_modules/.
 # outDir:"../kuadrant-backstage-plugin/dist-types" places .d.ts files where rhdh-cli
 # plugin export expects them (it looks for ../../dist-types from the real plugin path
-# kuadrant-backstage-plugin/plugins/<name>/). Invoke the tsc binary via `yarn exec`
-# because the (symlinked) root package.json's own "tsc" script is a turbo wrapper.
-yarn exec tsc
+# kuadrant-backstage-plugin/plugins/<name>/). The overlay's (symlinked) root
+# package.json has no direct typescript dep, so tsc isn't on the root bin path;
+# resolve it from the plugins' typescript dep and run it via node (CWD stays here
+# so the tsconfig include/outDir paths resolve).
+tsc_bin="$(node -e "const path=require('path'); const pj=require.resolve('typescript/package.json', {paths: ['./plugins/kuadrant']}); console.log(path.join(path.dirname(pj), require(pj).bin.tsc))")"
+node "$tsc_bin" -p tsconfig.json
 
 # Build frontend first — backend imports frontend's shared permission types.
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build

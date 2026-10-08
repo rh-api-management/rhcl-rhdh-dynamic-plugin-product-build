@@ -59,16 +59,16 @@ yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 # rhdh-cli detects an existing dist-dynamic/yarn.lock and switches yarn to
 # --immutable (no network, lockfile must be exact). We pre-seed a pruned lockfile
 # by running yarn install --no-immutable in a temp dir:
-#   - resolution reuses the submodule yarn.lock (everything already resolved)
-#   - the submodule root resolutions must be carried along, otherwise yarn would
-#     re-resolve the pinned ranges (zod, etc.) and reach for the registry
+#   - resolution reuses the submodule yarn.lock (every descriptor already locked)
+#   - the temp manifest must match what rhdh-cli writes to dist-dynamic/package.json
+#     exactly (name/deps/peerDeps, NO resolutions), so the pruned lockfile is the
+#     one rhdh-cli's own `yarn install --immutable` validates offline
 #   - fetch uses the cachi2 global cache (no network)
 # The pruned lockfile is then copied to dist-dynamic/ for rhdh-cli's --immutable install.
 _dist_prep=$(mktemp -d)
 node --input-type=module << NODEJS_EOF
 import { readFileSync, writeFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync('./plugins/kuadrant-backend/package.json'));
-const root = JSON.parse(readFileSync('./package.json'));
 // Mirror rhdh-cli customizeForDynamicUse: move @backstage/* from deps to peerDeps,
 // AND move any packages listed in --shared-package in the export-dynamic script.
 // The temp package.json must have the EXACT same name/deps/peerDeps as what
@@ -89,7 +89,6 @@ writeFileSync('${_dist_prep}/package.json',
     private: true,
     dependencies: remainingDeps,
     peerDependencies: allPeers,
-    resolutions: root.resolutions || {},
   }, null, 2));
 NODEJS_EOF
 cp yarn.lock "${_dist_prep}/yarn.lock"

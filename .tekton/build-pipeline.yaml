@@ -62,7 +62,7 @@ spec:
     description: Whether to enable privileged mode, should be used only with remote VMs
     name: privileged-nested
     type: string
-  - default: 'false'
+  - default: 'true'
     description: Use the package registry proxy when prefetching dependencies
     name: enable-package-registry-proxy
     type: string

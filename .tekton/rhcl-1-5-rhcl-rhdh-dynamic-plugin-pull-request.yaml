@@ -4,15 +4,16 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/rh-api-management/rhcl-rhdh-dynamic-plugin-product-build?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "rhcl-1.4"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "rhcl-1.5"
   labels:
-    appstudio.openshift.io/application: rhcl-1-4-rhcl-rhdh-dynamic-plugin
-    appstudio.openshift.io/component: rhcl-1-4-rhcl-rhdh-dynamic-plugin
+    appstudio.openshift.io/application: rhcl-1-5-rhcl-rhdh-dynamic-plugin
+    appstudio.openshift.io/component: rhcl-1-5-rhcl-rhdh-dynamic-plugin
     pipelines.appstudio.openshift.io/type: build
-  name: rhcl-1-4-rhcl-rhdh-dynamic-plugin-on-push
+  name: rhcl-1-5-rhcl-rhdh-dynamic-plugin-on-pull-request
   namespace: api-management-tenant
 spec:
   params:
@@ -21,12 +22,14 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/api-management-tenant/rhcl-1-4-rhcl-rhdh-dynamic-plugin:{{revision}}
+    value: quay.io/redhat-user-workloads/api-management-tenant/rhcl-1-5-rhcl-rhdh-dynamic-plugin:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
   - name: dockerfile
     value: Containerfile
   - name: hermetic
     value: "true"
-  - name: build-source-image
+  - name: skip-checks
     value: "true"
   pipelineRef:
     name: build-pipeline
@@ -48,7 +51,7 @@ spec:
         cpu: 6
         memory: 16Gi
   taskRunTemplate:
-    serviceAccountName: build-pipeline-rhcl-1-4-rhcl-rhdh-dynamic-plugin
+    serviceAccountName: build-pipeline-rhcl-1-5-rhcl-rhdh-dynamic-plugin
   workspaces:
   - name: git-auth
     secret:

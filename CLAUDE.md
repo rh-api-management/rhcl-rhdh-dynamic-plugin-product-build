@@ -7,7 +7,7 @@ Kuadrant RHDH dynamic plugins (`@kuadrant/kuadrant-backstage-plugin-frontend`
 and `@kuadrant/kuadrant-backstage-plugin-backend`) for Red Hat Developer Hub.
 
 The Konflux application is:
-https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/api-management-tenant/applications/rhcl-1-4-rhcl-rhdh-dynamic-plugin
+https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/api-management-tenant/applications/rhcl-1-5-rhcl-rhdh-dynamic-plugin
 
 ## Repo layout
 
@@ -18,8 +18,8 @@ repo/
     Containerfile                 # FROM scratch — copies pre-built plugin files
     dist/                         # created by build.sh, not committed (gitignored)
   .tekton/
-    rhcl-1-4-rhcl-rhdh-dynamic-plugin-push.yaml
-    rhcl-1-4-rhcl-rhdh-dynamic-plugin-pull-request.yaml
+    rhcl-1-5-rhcl-rhdh-dynamic-plugin-push.yaml
+    rhcl-1-5-rhcl-rhdh-dynamic-plugin-pull-request.yaml
   packaging/                      # standalone yarn workspace for cachi2 prefetch
   kuadrant-backstage-plugin/      # git submodule → Kuadrant/kuadrant-backstage-plugin
 ```

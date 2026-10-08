@@ -80,6 +80,27 @@ jobs:
           echo "Updated Containerfile version to $VERSION_NUM"
           cat dynamic-plugins/Containerfile | grep "LABEL version"
 
+      - name: Set up Node
+        if: steps.compare.outputs.comparison-result == '>'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable Corepack
+        if: steps.compare.outputs.comparison-result == '>'
+        run: corepack enable
+
+      - name: Regenerate packaging lockfile
+        if: steps.compare.outputs.comparison-result == '>'
+        run: |
+          # The submodule bump changes the two plugins' dependencies, so the
+          # standalone packaging/ lockfile must be regenerated to match. The
+          # static pins in packaging/package.json (@yarnpkg/core, @types/jest)
+          # are preserved. The resulting lockfile is validated by the Checks
+          # workflow and the Konflux build on the PR this action opens.
+          cd packaging
+          yarn install
+
       - name: Create Pull Request
         if: steps.compare.outputs.comparison-result == '>'
         uses: peter-evans/create-pull-request@v6
@@ -94,6 +115,7 @@ jobs:
             Updated files:
             - kuadrant-backstage-plugin submodule -> ${{ steps.latest_version.outputs.tag }}
             - Containerfile version label
+            - packaging/yarn.lock (regenerated for the bumped plugin deps)
           branch: auto/bump-kuadrant-backstage-plugin-${{ steps.latest_version.outputs.tag }}
           delete-branch: true
           title: 'chore: Bump kuadrant-backstage-plugin to ${{ steps.latest_version.outputs.tag }}'
@@ -105,10 +127,12 @@ jobs:
             ## Changes
             - Updated kuadrant-backstage-plugin submodule to tag ${{ steps.latest_version.outputs.tag }}
             - Updated version in `dynamic-plugins/Containerfile` to match
+            - Regenerated `packaging/yarn.lock` for the bumped plugin dependencies
 
             ## Testing
             - [ ] Verify the submodule points to the correct tag
             - [ ] Check that the Containerfile version matches the submodule tag
+            - [ ] Confirm the `Checks` workflow (packaging lockfile + type-check) passes
             - [ ] Run build tests to ensure compatibility
 
             ---

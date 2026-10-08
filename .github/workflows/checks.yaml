@@ -4,11 +4,13 @@ on:
     paths:
       - kuadrant-backstage-plugin
       - packaging/.yarnrc.yml
+      - packaging/package.json
       - packaging/yarn.lock
   pull_request:
     paths:
       - kuadrant-backstage-plugin
       - packaging/.yarnrc.yml
+      - packaging/package.json
       - packaging/yarn.lock
 jobs:
   verify:
@@ -34,3 +36,6 @@ jobs:
             echo "Run 'yarn install' in the packaging/ directory and commit the result."
             exit 1
           fi
+      - name: Type-check (build smoke)
+        working-directory: packaging
+        run: yarn tsc

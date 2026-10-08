@@ -11,56 +11,66 @@ fi
 # @swc/core 1.16+ ships "native addon carriers": on first load it materializes
 # the real binary into a cache dir ($HOME/.cache by default) and refuses if that
 # cache root's parent is writable by another user without the sticky bit. In the
-# run-script-oci-ta runner $HOME is /opt/app-root/src (group-writable, no sticky),
-# so rhdh-cli's swc-loader fails with "Failed to load native binding" when it
-# builds the scalprum assets. Point the cache at a private temp dir (parent /tmp
-# is sticky) so materialization is allowed.
+# run-script-oci-ta runner $HOME is /opt/app-root/src (group-writable, no sticky).
+# Point the cache at a private temp dir (parent /tmp is sticky) so materialization
+# is allowed. (Harmless even when the resolved @swc/core predates the carrier.)
 export SWC_NATIVE_BINDING_CACHE="$(mktemp -d)"
 
-# Build directly from the kuadrant-backstage-plugin submodule using its own
-# upstream-tested yarn.lock (no regenerated/minimal lockfile to drift). The
-# build-workspace/ overlay — which cachi2 prefetched from — is nothing but an
-# x64/linux .yarnrc.yml plus symlinks into the submodule. Copy that .yarnrc.yml
-# over the submodule's own (multi-arch) one so the build installs exactly the
-# x64/linux package set that was prefetched, and so yarn picks up the cachi2
-# globalFolder config that was patched into it during prefetch.
-cp build-workspace/.yarnrc.yml "${PLUGIN_DIR}/.yarnrc.yml"
+# build-workspace/ is a thin overlay over the kuadrant-backstage-plugin submodule:
+# an x64/linux .yarnrc.yml and a dist-types tsconfig, with package.json, yarn.lock,
+# packages/, plugins/ and .yarn/ all symlinked into the submodule. Building here
+# reuses the submodule's frozen, upstream-tested yarn.lock (no regeneration, no
+# drift) while constraining the hermetic prefetch to x64/linux (the submodule's own
+# .yarnrc.yml is multi-arch). yarn install --immutable skips resolution (no network).
+cd build-workspace
 
-cd "${PLUGIN_DIR}"
-
-# Installs into the submodule root node_modules, so tools (backstage-cli,
-# rhdh-cli) running from the real plugin paths resolve the hoisted packages by
-# walking up to the submodule root — no node_modules symlink juggling needed.
 yarn install --immutable
+
+# cachi2 patches build-workspace/.yarnrc.yml with globalFolder before this task runs.
+# rhdh-cli's 'yarn install --immutable' inside dist-dynamic/ walks up:
+# plugins/kuadrant-backend/dist-dynamic/ → plugins/kuadrant-backend/ →
+# plugins/ → kuadrant-backstage-plugin/ (unpatched root .yarnrc.yml).
+# Copy the patched file one level above plugins/ so yarn finds the cachi2
+# globalFolder config before hitting the unpatched submodule root.
+cp .yarnrc.yml "../${PLUGIN_DIR}/plugins/.yarnrc.yml"
+
+# Linux getcwd() resolves symlinks to real paths, so tools (backstage-cli,
+# rhdh-cli) running with cwd=plugins/kuadrant (real path) walk up ancestors
+# that never reach build-workspace/node_modules. Symlinking it one level up makes
+# the hoisted packages findable from both real plugin paths.
+ln -sf "../build-workspace/node_modules" "../${PLUGIN_DIR}/node_modules"
+
+# Generate TypeScript declaration files (.d.ts) required by export-dynamic.
+# Uses build-workspace/tsconfig.json with preserveSymlinks:true so @backstage/cli
+# extends correctly and module resolution finds build-workspace/node_modules/.
+# outDir:"../kuadrant-backstage-plugin/dist-types" places .d.ts files where rhdh-cli
+# plugin export expects them (it looks for ../../dist-types from the real plugin path
+# kuadrant-backstage-plugin/plugins/<name>/). Invoke the tsc binary via `yarn exec`
+# because the (symlinked) root package.json's own "tsc" script is a turbo wrapper.
+yarn exec tsc
 
 # Build frontend first — backend imports frontend's shared permission types.
 yarn workspace @kuadrant/kuadrant-backstage-plugin-frontend build
 yarn workspace @kuadrant/kuadrant-backstage-plugin-backend build
 
-# Generate the central dist-types/ declaration tree that rhdh-cli's export
-# expects (it looks for ../../dist-types/plugins/<name>/src/index.d.ts from each
-# plugin dir). A standalone tsconfig emits only declarations (noCheck); run the
-# tsc binary directly since the submodule's "tsc" script is a turbo wrapper.
-cp ../build-workspace/dist-types.tsconfig.json ./dist-types.tsconfig.json
-node_modules/.bin/tsc -p dist-types.tsconfig.json
-
-# Pre-seed the backend's dist-dynamic/yarn.lock so rhdh-cli's internal
-# `yarn install --immutable` runs offline (no network, lockfile must be exact).
-# The frontend is bundled via scalprum/webpack and installs no dynamic deps, so
-# only the backend needs this. We prune the submodule's full lockfile down to the
-# backend's customized dynamic manifest by running a throwaway install:
+# rhdh-cli detects an existing dist-dynamic/yarn.lock and switches yarn to
+# --immutable (no network, lockfile must be exact). We pre-seed a pruned lockfile
+# by running yarn install --no-immutable in a temp dir:
 #   - resolution reuses the submodule yarn.lock (everything already resolved)
 #   - the submodule root resolutions must be carried along, otherwise yarn would
 #     re-resolve the pinned ranges (zod, etc.) and reach for the registry
 #   - fetch uses the cachi2 global cache (no network)
+# The pruned lockfile is then copied to dist-dynamic/ for rhdh-cli's --immutable install.
 _dist_prep=$(mktemp -d)
 node --input-type=module << NODEJS_EOF
 import { readFileSync, writeFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync('./plugins/kuadrant-backend/package.json'));
 const root = JSON.parse(readFileSync('./package.json'));
-// Mirror rhdh-cli customizeForDynamicUse: move @backstage/* (and any
-// --shared-package from the export-dynamic script) from deps to peerDeps so the
-// temp manifest matches what rhdh-cli writes to dist-dynamic/package.json.
+// Mirror rhdh-cli customizeForDynamicUse: move @backstage/* from deps to peerDeps,
+// AND move any packages listed in --shared-package in the export-dynamic script.
+// The temp package.json must have the EXACT same name/deps/peerDeps as what
+// rhdh-cli writes to dist-dynamic/package.json so the workspace lockfile entry
+// matches and yarn install --immutable does not see a modification.
 const exportScript = pkg.scripts?.['export-dynamic'] || '';
 const userShared = [...exportScript.matchAll(/--shared-package\s+([^\s!][^\s]*)/g)]
   .map(m => m[1]);
@@ -100,6 +110,7 @@ yarn workspace @kuadrant/kuadrant-backstage-plugin-backend export-dynamic || {
 cd ..
 
 # Collect exported plugin directories into the OCI artifact output location.
+# dist-dynamic/ is created at the real plugin paths (build-workspace/plugins/* are symlinks).
 mkdir -p dynamic-plugins/dist
 cp -r "${PLUGIN_DIR}/plugins/kuadrant/dist-dynamic" \
 	dynamic-plugins/dist/kuadrant-backstage-plugin-frontend-dynamic
